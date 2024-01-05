@@ -1,15 +1,16 @@
 package org.example;
 
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 
 public class Handler {
-    private final S3Client s3Client;
+    private final S3AsyncClient s3Client;
 
     public Handler() {
         s3Client = DependencyFactory.s3Client();
@@ -29,8 +30,8 @@ public class Handler {
                     .bucket(bucket)
                     .key(mpkey)
                     .build();
-            CreateMultipartUploadResponse res = s3Client.createMultipartUpload(req);
-            String uploadId = res.uploadId();
+            CompletableFuture<CreateMultipartUploadResponse> res = s3Client.createMultipartUpload(req);
+            String uploadId = res.get().uploadId();
             System.out.println("Mpart upload ID: " + uploadId);
 
             CompletedPart[] arr = new CompletedPart[100];
@@ -42,7 +43,7 @@ public class Handler {
                         .uploadId(uploadId)
                         .partNumber(i+1)
                         .build();
-                String etag1 = s3Client.uploadPart(req1, RequestBody.fromByteBuffer(getRandomByteBuffer(5 * mB))).eTag();
+                String etag1 = s3Client.uploadPart(req1, AsyncRequestBody.fromByteBuffer(getRandomByteBuffer(5 * mB))).get().eTag();
                 CompletedPart part1 = CompletedPart
                         .builder()
                         .partNumber(i+1)
@@ -58,16 +59,13 @@ public class Handler {
                             .multipartUpload(completedMultipartUpload)
                             .build();
             s3Client.completeMultipartUpload(completeMultipartUploadRequest);
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         System.out.println("Done multi part upload");
 
         cleanUp(s3Client, bucket, mpkey);
 
-        System.out.println("Closing the connection to {S3}");
-        s3Client.close();
-        System.out.println("Connection closed");
         System.out.println("Exiting...");
     }
 
@@ -77,7 +75,7 @@ public class Handler {
         return ByteBuffer.wrap(b);
     }
 
-    public static void createBucket(S3Client s3Client, String bucketName) {
+    public static void createBucket(S3AsyncClient s3Client, String bucketName) {
         try {
             s3Client.createBucket(CreateBucketRequest
                     .builder()
@@ -95,7 +93,7 @@ public class Handler {
         }
     }
 
-    public static void cleanUp(S3Client s3Client, String bucketName, String keyName) {
+    public static void cleanUp(S3AsyncClient s3Client, String bucketName, String keyName) {
         System.out.println("Cleaning up...");
         try {
             System.out.println("Deleting object: " + keyName);
