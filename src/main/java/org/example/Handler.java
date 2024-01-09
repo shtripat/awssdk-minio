@@ -6,6 +6,8 @@ import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
@@ -29,29 +31,36 @@ public class Handler {
                     .builder()
                     .bucket(bucket)
                     .key(mpkey)
+                    .checksumAlgorithm(ChecksumAlgorithm.CRC32_C)
                     .build();
             CompletableFuture<CreateMultipartUploadResponse> res = s3Client.createMultipartUpload(req);
+            Thread.sleep(100); // sleep to wait for multipart upload creation
             String uploadId = res.get().uploadId();
             System.out.println("Mpart upload ID: " + uploadId);
 
-            CompletedPart[] arr = new CompletedPart[100];
-            for (int i = 0; i < 100; i++) {
+            List<CompletedPart> completedParts = new ArrayList<>();
+            for (int i = 0; i < 10; i++) {
                 UploadPartRequest req1 = UploadPartRequest
                         .builder()
                         .bucket(bucket)
                         .key(mpkey)
                         .uploadId(uploadId)
                         .partNumber(i+1)
+                        .checksumAlgorithm(ChecksumAlgorithm.CRC32_C)
                         .build();
-                String etag1 = s3Client.uploadPart(req1, AsyncRequestBody.fromByteBuffer(getRandomByteBuffer(5 * mB))).get().eTag();
+                CompletableFuture<UploadPartResponse> resp = s3Client.uploadPart(req1, AsyncRequestBody.fromByteBuffer(getRandomByteBuffer(5 * mB)));
+                String etag1 = resp.get().eTag();
+                String crc = resp.get().checksumCRC32C();
                 CompletedPart part1 = CompletedPart
                         .builder()
                         .partNumber(i+1)
                         .eTag(etag1)
+                        .checksumCRC32C(crc)
                         .build();
-                arr[0] = part1;
+                completedParts.add(part1);
             }
-            CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder().parts(arr).build();
+            Thread.sleep(1000); // sleep to wait for completion of multipart upload
+            CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder().parts(completedParts).build();
             CompleteMultipartUploadRequest completeMultipartUploadRequest =
                     CompleteMultipartUploadRequest.builder()
                             .bucket(bucket).key(mpkey)
@@ -59,6 +68,7 @@ public class Handler {
                             .multipartUpload(completedMultipartUpload)
                             .build();
             s3Client.completeMultipartUpload(completeMultipartUploadRequest);
+            Thread.sleep(100); // sleep to wait for completion of multipart upload
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -85,10 +95,14 @@ public class Handler {
             s3Client.waiter().waitUntilBucketExists(HeadBucketRequest.builder()
                     .bucket(bucketName)
                     .build());
+            Thread.sleep(100); // sleep to wait for creation of bucket
             System.out.println(bucketName + " is ready.");
             System.out.printf("%n");
         } catch (S3Exception e) {
             System.err.println(e.awsErrorDetails().errorMessage());
+            System.exit(1);
+        } catch (Exception ex) {
+            ex.printStackTrace();
             System.exit(1);
         }
     }
@@ -97,16 +111,25 @@ public class Handler {
         System.out.println("Cleaning up...");
         try {
             System.out.println("Deleting object: " + keyName);
-            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder().bucket(bucketName).key(keyName).build();
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest
+                    .builder()
+                    .bucket(bucketName)
+                    .key(keyName)
+                    .build();
             s3Client.deleteObject(deleteObjectRequest);
+            Thread.sleep(100); // sleep to wait for removal of object
             System.out.println(keyName + " has been deleted.");
             System.out.println("Deleting bucket: " + bucketName);
             DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder().bucket(bucketName).build();
             s3Client.deleteBucket(deleteBucketRequest);
+            Thread.sleep(100); // sleep to wait for removal of bucket
             System.out.println(bucketName + " has been deleted.");
             System.out.printf("%n");
         } catch (S3Exception e) {
             System.err.println(e.awsErrorDetails().errorMessage());
+            System.exit(1);
+        } catch (Exception ex) {
+            ex.printStackTrace();
             System.exit(1);
         }
         System.out.println("Cleanup complete");
