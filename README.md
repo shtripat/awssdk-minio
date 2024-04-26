@@ -36,3 +36,10 @@ Below is the structure of the generated project.
 mvn clean package
 ```
 
+### Build executable JAR and run project
+```
+mvn clean package shade:shade
+java -cp target/getstarted-1.0-SNAPSHOT.jar org.example.App
+```
+
+it needs a local running instance of MinIO at http://127.0.0.1:9000

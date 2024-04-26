@@ -13,7 +13,7 @@
         <maven.shade.plugin.version>3.2.1</maven.shade.plugin.version>
         <maven.compiler.plugin.version>3.6.1</maven.compiler.plugin.version>
         <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
-        <aws.java.sdk.version>2.21.36</aws.java.sdk.version>
+        <aws.java.sdk.version>2.25.31</aws.java.sdk.version>
         <slf4j.version>1.7.28</slf4j.version>
         <junit5.version>5.8.1</junit5.version>
     </properties>
@@ -105,5 +105,6 @@
             </plugin>
         </plugins>
     </build>
+
 
 </project>
