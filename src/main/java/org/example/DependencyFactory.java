@@ -20,8 +20,8 @@ public class DependencyFactory {
     public static S3AsyncClient s3Client() {
         S3Configuration config = S3Configuration.builder().chunkedEncodingEnabled(true).build();
         return S3AsyncClient.builder()
-//                .endpointOverride(URI.create("http://127.0.0.1:9000"))
-                .endpointOverride(URI.create("https://s3.amazonaws.com"))
+                .endpointOverride(URI.create("http://127.0.0.1:9000"))
+//                .endpointOverride(URI.create("https://s3.amazonaws.com"))
                 .credentialsProvider(ProfileCredentialsProvider.create())
                 .serviceConfiguration(config)
                 .build();
