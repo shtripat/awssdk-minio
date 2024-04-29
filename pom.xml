@@ -33,12 +33,16 @@
     <dependencies>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
+            <artifactId>netty-nio-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
             <exclusions>
-                <exclusion>
+                <!--<exclusion>
                     <groupId>software.amazon.awssdk</groupId>
                     <artifactId>netty-nio-client</artifactId>
-                </exclusion>
+                </exclusion>-->
                 <exclusion>
                     <groupId>software.amazon.awssdk</groupId>
                     <artifactId>apache-client</artifactId>
