@@ -3,9 +3,14 @@ package org.example;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.FileUpload;
+import software.amazon.awssdk.transfer.s3.model.CompletedFileUpload;
+import software.amazon.awssdk.transfer.s3.model.UploadFileRequest;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -19,6 +24,31 @@ public class Handler {
     }
 
     public void sendRequest() {
+        String bucket = "bucket" + System.currentTimeMillis();
+        String mpkey = "mpkey";
+
+        createBucket(s3Client, bucket);
+
+        System.out.println("Starting multi part upload");
+        S3TransferManager transferManager = S3TransferManager.builder()
+                                                .s3Client(s3Client)
+                                                .build();
+        try {
+            UploadFileRequest uploadFileRequest = UploadFileRequest.builder()
+                    .putObjectRequest(b -> b.bucket(bucket).key(mpkey))
+                    .source(Paths.get("/home/shubhendu/work-forked-repos/minio/data/uberfile"))
+                    .build();
+            FileUpload upload = transferManager.uploadFile(uploadFileRequest);
+            CompletedFileUpload uploadResult = upload.completionFuture().join();
+            System.out.println("Upload complete: " + uploadResult.response().eTag());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            transferManager.close();
+        }
+    }
+
+    /*public void sendRequest1() {
         String bucket = "bucket" + System.currentTimeMillis();
         String mpkey = "mpkey";
         int mB = 1024 * 1024;
@@ -39,7 +69,7 @@ public class Handler {
             System.out.println("Mpart upload ID: " + uploadId);
 
             List<CompletedPart> completedParts = new ArrayList<>();
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 1000; i++) {
                 UploadPartRequest req1 = UploadPartRequest
                         .builder()
                         .bucket(bucket)
@@ -59,7 +89,7 @@ public class Handler {
                         .build();
                 completedParts.add(part1);
             }
-            Thread.sleep(1000); // sleep to wait for completion of multipart upload
+            //Thread.sleep(1000); // sleep to wait for completion of multipart upload
             CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder().parts(completedParts).build();
             CompleteMultipartUploadRequest completeMultipartUploadRequest =
                     CompleteMultipartUploadRequest.builder()
@@ -77,7 +107,7 @@ public class Handler {
         cleanUp(s3Client, bucket, mpkey);
 
         System.out.println("Exiting...");
-    }
+    }*/
 
     private static ByteBuffer getRandomByteBuffer(int size) throws IOException {
         byte[] b = new byte[size];
@@ -95,7 +125,7 @@ public class Handler {
             s3Client.waiter().waitUntilBucketExists(HeadBucketRequest.builder()
                     .bucket(bucketName)
                     .build());
-            Thread.sleep(100); // sleep to wait for creation of bucket
+            Thread.sleep(1000); // sleep to wait for creation of bucket
             System.out.println(bucketName + " is ready.");
             System.out.printf("%n");
         } catch (S3Exception e) {
